@@ -225,5 +225,11 @@ FEATURED_MODELS = {
         "base_model": "flux-dev",
         "architecture": "flux-dev",
         "backend": "mlx-flux"
+    },
+    "flux-krea-dev": {
+        "repo": "NikolaSigmoid/FLUX.1-Kontext-dev",
+        "task": "image-edit",
+        "architecture": "flux-kontext-dev",
+        "backend": "mlx-flux"
     }
 }
