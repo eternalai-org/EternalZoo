@@ -502,7 +502,7 @@ class ImageEditRequest(BaseModel):
     guidance_scale: Optional[float] = Field(default=2.5, description="Guidance scale for the edit")
     response_format: Optional[ResponseFormat] = Field(default=ResponseFormat.B64_JSON, description="The format in which the edited images are returned")
     seed: Optional[int] = Field(42, description="Seed for reproducible generation")
-    size: Optional[ImageSize] = Field(default=ImageSize.COSMOS_SIZE, description="The size of the edited images")
+    size: Optional[ImageSize] = Field(default=ImageSize.FLUX_SIZE, description="The size of the edited images")
     steps: Optional[int] = Field(default=50, ge=1, le=50, description="The number of inference steps (1-50)")
 
 class ImageEditResponse(BaseModel):
