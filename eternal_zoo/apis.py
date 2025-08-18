@@ -10,6 +10,7 @@ import asyncio
 import time
 import json
 import uuid
+from fastapi import UploadFile, File, Form
 # Import configuration settings
 from json_repair import repair_json
 from typing import Dict, Any, List, Optional, Tuple
@@ -35,7 +36,12 @@ from eternal_zoo.schema import (
     ChoiceDeltaToolCall,
     ChatCompletionResponse,
     ImageGenerationRequest,
-    ImageGenerationResponse
+    ImageGenerationResponse,
+    ImageEditRequest,
+    ImageEditResponse,
+    ImageEditErrorResponse,
+    ImageSize,
+    ResponseFormat
 )
 
 # Set up logging with both console and file output
@@ -992,6 +998,33 @@ async def image_generations(request: ImageGenerationRequest):
     """Endpoint for image generation requests (supports both /v1 and non-/v1)."""
     request_dict = convert_request_to_dict(request)
     return await RequestProcessor.process_request("/v1/images/generations", request_dict)
+
+@app.post("/images/edits")
+@app.post("/v1/images/edits")
+async def image_edits(
+    image: UploadFile = File(...),
+    prompt: str = Form(...),
+    negative_prompt: Optional[str] = Form(None),
+    model: Optional[str] = Form(None),
+    guidance_scale: Optional[float] = Form(2.5),
+    response_format: Optional[ResponseFormat] = Form(ResponseFormat.B64_JSON),
+    seed: Optional[int] = Form(42),
+    size: Optional[ImageSize] = Form(ImageSize.FLUX_SIZE),
+    steps: Optional[int] = Form(50),
+):
+    """Endpoint for image edit requests (supports both /v1 and non-/v1)."""
+    request_dict = {
+        "image": image,
+        "prompt": prompt,
+        "negative_prompt": negative_prompt,
+        "model": model,
+        "guidance_scale": guidance_scale,
+        "response_format": response_format,
+        "seed": seed,
+        "size": size,
+        "steps": steps
+    }
+    return await RequestProcessor.process_request("/v1/images/edits", request_dict)
 
 @app.get("/models", response_model=ModelList)
 @app.get("/v1/models", response_model=ModelList)

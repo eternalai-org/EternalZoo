@@ -191,7 +191,7 @@ FEATURED_MODELS = {
     "flux-krea-dev": {
         "repo": "NikolaSigmoid/FLUX.1-Krea-dev",
         "task": "image-generation",
-        "architecture": "flux-dev",
+        "architecture": "flux-krea-dev",
         "backend": "mlx-flux"
     },
     "flux-dev-nsfw": {
