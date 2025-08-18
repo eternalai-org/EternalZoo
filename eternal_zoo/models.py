@@ -229,7 +229,7 @@ FEATURED_MODELS = {
     "flux-kontext-dev": {
         "repo": "NikolaSigmoid/FLUX.1-Kontext-dev",
         "task": "image-edit",
-        "architecture": "flux-kontext-dev",
+        "architecture": "flux-kontext",
         "backend": "mlx-flux"
     }
 }
