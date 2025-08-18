@@ -113,16 +113,17 @@ class EternalZooManager:
             elif task == "image-generation":
                 logger.info(f"Starting image generation model: {config}")
                 if not shutil.which("mlx-openai-server"):
-                    raise EternalZooServiceError("mlx-openai-server command not found in PATH")
+                    logger.warning(f"mlx-openai-server command not found in PATH")
+                    continue
                 running_ai_command = self._build_image_generation_command(config)
             elif task == "image-edit":
-                logger.warning(f"Image edit is not implemented yet: {config}")
-                continue
+                running_ai_command = self._build_image_edit_command(config)
             else:
                 continue
 
             if running_ai_command is None:
-                raise ValueError(f"Invalid running AI command: {running_ai_command}")
+                logger.warning(f"Invalid running AI command: {config}")
+                continue
             
             ai_service["running_ai_command"] = running_ai_command
             logger.info(f"Running command: {' '.join(running_ai_command)}")
@@ -929,6 +930,27 @@ class EternalZooManager:
             lora_scale_str = ",".join(str(scale) for scale in lora_scales)
             command.extend(["--lora-scales", lora_scale_str])
         
+        return command
+    
+
+    def _build_image_edit_command(self, config: dict) -> list:
+        """Build the image-edit command with MLX Flux parameters and optional LoRA support."""
+        model_path = config["model"]
+        lora_config = config.get("lora_config", None)
+        is_lora = config.get("is_lora", False)
+        architecture = config.get("architecture", "flux-dev")
+        
+        if is_lora:
+            logger.warning(f"LoRA is not supported for image edit")
+            return None
+        
+        command = [
+            "mlx-openai-server",
+            "launch",
+            "--model-path", str(model_path),
+            "--config-name", architecture,
+            "--model-type", "image-edit",
+        ]
         return command
 
 
