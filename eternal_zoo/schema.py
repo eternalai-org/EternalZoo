@@ -9,6 +9,8 @@ from enum import Enum
 from typing_extensions import Literal
 from pydantic import BaseModel, Field, validator, root_validator
 from typing import List, Dict, Optional, Union, Any, ClassVar
+from fastapi import UploadFile
+
 # Import configuration settings
 from eternal_zoo.config import DEFAULT_CONFIG
 
@@ -425,34 +427,46 @@ class LoraConfigRequest(BaseModel):
 # ============================================================================
 
 class ImageSize(str, Enum):
-    SMALL_SQUARE = "256x256"
-    MEDIUM_SQUARE = "512x512"
-    LARGE_SQUARE = "1024x1024"
+    """Available image sizes for generation"""
+    SMALL = "256x256"
+    MEDIUM = "512x512"
+    LARGE = "1024x1024"
     HORIZONTAL = "1792x1024"
     VERTICAL = "1024x1792"
-    COSMOS_SIZE = "1280x704"
+    FLUX_SIZE = "1024x1024"
 
 class TaskStatus(str, Enum):
+    """Task status levels"""
     QUEUED = "queued"
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
 
 class Priority(str, Enum):
+    """Task priority levels"""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
 
+class ImageEditQuality(str, Enum):
+    """Image edit quality levels"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+class ResponseFormat(str, Enum):
+    """Image response format options"""
+    B64_JSON = "b64_json"
+
 class ImageGenerationRequest(BaseModel):
     """Request schema for OpenAI-compatible image generation API"""
     prompt: str = Field(..., description="A text description of the desired image(s). The maximum length is 1000 characters.", max_length=1000)
+    negative_prompt: Optional[str] = Field(None, description="A text description of what to avoid in the image. The maximum length is 1000 characters.", max_length=1000)
     model: Optional[str] = Field(DEFAULT_CONFIG.model.DEFAULT_IMAGE_MODEL, description="The model to use for image generation")
     size: Optional[ImageSize] = Field(default=ImageSize.COSMOS_SIZE, description="The size of the generated images")
-    negative_prompt: Optional[str] = Field(None, description="The negative prompt to generate the image from")
     steps: Optional[int] = Field(default=50, ge=1, le=50, description="The number of inference steps (1-50)")
-    priority: Optional[Priority] = Field(default=Priority.NORMAL, description="Task priority in queue")
-    async_mode: Optional[bool] = Field(default=False, description="Whether to process asynchronously")
-    image_strength: Optional[float] = Field(default=0.8, description="The strength of the image generation")
+    seed: Optional[int] = Field(42, description="Seed for reproducible generation")
+    response_format: Optional[ResponseFormat] = Field(default=ResponseFormat.B64_JSON, description="The format in which the generated images are returned")
 
 class ImageData(BaseModel):
     """Individual image data in the response"""
@@ -474,3 +488,30 @@ class ImageGenerationErrorResponse(BaseModel):
     """Error response wrapper"""
     created: int = Field(..., description="The Unix timestamp (in seconds) when the error occurred")
     error: ImageGenerationError = Field(..., description="Error details")
+
+# ============================================================================
+# Image Edit Models
+# ============================================================================
+
+class ImageEditRequest(BaseModel):
+    """Request schema for OpenAI-compatible image edit API"""
+    image: UploadFile = Field(..., description="The image file to edit")
+    prompt: str = Field(..., description="A text description of the desired edit. The maximum length is 1000 characters.", max_length=1000)
+    negative_prompt: Optional[str] = Field(None, description="A text description of what to avoid in the edited image. The maximum length is 1000 characters.", max_length=1000)
+    model: Optional[str] = Field(DEFAULT_CONFIG.model.DEFAULT_IMAGE_MODEL, description="The model to use for image editing")
+    guidance_scale: Optional[float] = Field(default=2.5, description="Guidance scale for the edit")
+    response_format: Optional[ResponseFormat] = Field(default=ResponseFormat.B64_JSON, description="The format in which the edited images are returned")
+    seed: Optional[int] = Field(42, description="Seed for reproducible generation")
+    size: Optional[ImageSize] = Field(default=ImageSize.COSMOS_SIZE, description="The size of the edited images")
+    steps: Optional[int] = Field(default=50, ge=1, le=50, description="The number of inference steps (1-50)")
+
+class ImageEditResponse(BaseModel):
+    """Response schema for OpenAI-compatible image edit API"""
+    created: int = Field(..., description="The Unix timestamp (in seconds) when the image was edited")
+    data: List[ImageData] = Field(..., description="List of edited images")
+
+class ImageEditErrorResponse(BaseModel):
+    """Error response schema for image editing"""
+    code: str = Field(..., description="Error code (e.g., 'contentFilter', 'generation_error', 'queue_full')")
+    message: str = Field(..., description="Human-readable error message")
+    type: Optional[str] = Field(None, description="Error type")
