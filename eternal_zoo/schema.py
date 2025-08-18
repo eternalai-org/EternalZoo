@@ -464,7 +464,7 @@ class ImageGenerationRequest(BaseModel):
     negative_prompt: Optional[str] = Field(None, description="A text description of what to avoid in the image. The maximum length is 1000 characters.", max_length=1000)
     model: Optional[str] = Field(DEFAULT_CONFIG.model.DEFAULT_IMAGE_MODEL, description="The model to use for image generation")
     size: Optional[ImageSize] = Field(default=ImageSize.FLUX_SIZE, description="The size of the generated images")
-    steps: Optional[int] = Field(default=50, ge=1, le=50, description="The number of inference steps (1-50)")
+    steps: Optional[int] = Field(default=28, ge=1, le=50, description="The number of inference steps (1-50)")
     seed: Optional[int] = Field(42, description="Seed for reproducible generation")
     response_format: Optional[ResponseFormat] = Field(default=ResponseFormat.B64_JSON, description="The format in which the generated images are returned")
 
@@ -503,7 +503,7 @@ class ImageEditRequest(BaseModel):
     response_format: Optional[ResponseFormat] = Field(default=ResponseFormat.B64_JSON, description="The format in which the edited images are returned")
     seed: Optional[int] = Field(42, description="Seed for reproducible generation")
     size: Optional[ImageSize] = Field(default=ImageSize.FLUX_SIZE, description="The size of the edited images")
-    steps: Optional[int] = Field(default=50, ge=1, le=50, description="The number of inference steps (1-50)")
+    steps: Optional[int] = Field(default=28, ge=1, le=50, description="The number of inference steps (1-50)")
 
 class ImageEditResponse(BaseModel):
     """Response schema for OpenAI-compatible image edit API"""

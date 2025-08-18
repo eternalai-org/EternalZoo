@@ -14,7 +14,7 @@ HASH=bafkreiclwlxc56ppozipczuwkmgnlrxrerrvaubc5uhvfs3g2hp3lftrwm
 download:
 	python eternal_zoo/download.py $(HASH)
 
-MLX_OPENAI_SERVER_TAG=1.2.18
+MLX_OPENAI_SERVER_TAG=1.2.19
 ETERNAL_ZOO_TAG=2.0.31
 
 # Default target

@@ -286,7 +286,55 @@ class ServiceHandler:
             created=response_data.get("created", int(time.time())),
             data=response_data.get("data", [])
         )
+
+    @staticmethod
+    async def generate_image_edit_response(request: ImageEditRequest):
+        """Generate a response for image edit requests."""
+        image_edit_models = eternal_zoo_manager.get_models_by_task(["image-edit"])
+        if len(image_edit_models) == 0:
+            raise HTTPException(status_code=404, detail=f"No image edit model found")
+        
+        model = None
+        for image_edit_model in image_edit_models:
+            if request.model == image_edit_model["model_id"]:
+                model = image_edit_model
+                break
+
+        if model is None:
+            model = image_edit_models[0]
+            request.model = model["model_id"]
+        
+        port = model.get("port", None)
+        if port is None:
+            raise HTTPException(status_code=500, detail=f"Model {model.get('model_id', 'unknown')} has no port")
+        
+        host = model.get("host", "0.0.0.0")
+        
+        # Handle image edit requests with multipart form data
+        response_data = await ServiceHandler._make_image_edit_api_call(host, port, "/v1/images/edits", request)
+        return ImageEditResponse(
+            created=response_data.get("created", int(time.time())),
+            data=response_data.get("data", [])
+        )
     
+    @staticmethod
+    async def _handle_response(response) -> Dict[str, Any]:
+        """Handle HTTP response with common error handling and JSON parsing."""
+        logger.info(f"Received response with status code: {response.status_code}")
+        
+        if response.status_code != 200:
+            error_text = response.text
+            logger.error(f"Error: {response.status_code} - {error_text}")
+            if response.status_code < 500:
+                raise HTTPException(status_code=response.status_code, detail=error_text)
+        
+        return response.json()
+
+    @staticmethod
+    def _get_enum_value(value):
+        """Get the value from an enum or return the value as string."""
+        return value.value if hasattr(value, 'value') else str(value)
+
     @staticmethod
     async def _make_api_call(host: str, port: int, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Make a non-streaming API call to the specified endpoint and return the JSON response."""
@@ -296,18 +344,54 @@ class ServiceHandler:
                 json=data,
                 timeout=HTTP_TIMEOUT
             )
-            logger.info(f"Received response with status code: {response.status_code}")
+            return await ServiceHandler._handle_response(response)
             
-            if response.status_code != 200:
-                error_text = response.text
-                logger.error(f"Error: {response.status_code} - {error_text}")
-                if response.status_code < 500:
-                    raise HTTPException(status_code=response.status_code, detail=error_text)
+        except httpx.TimeoutException as e:
+            raise HTTPException(status_code=504, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @staticmethod
+    async def _make_image_edit_api_call(host: str, port: int, endpoint: str, request: ImageEditRequest) -> Dict[str, Any]:
+        """Make a non-streaming API call for image edit requests with multipart form data."""
+        try:
+            # Prepare files
+            image_content = await request.image.read()
+            files = {
+                "image": (
+                    request.image.filename or "image.jpg", 
+                    image_content, 
+                    request.image.content_type or "image/jpeg"
+                )
+            }
             
-            # Cache JSON parsing to avoid multiple calls
-            json_response = response.json()
+            # Prepare form data with non-None values
+            form_data = {}
+            field_mappings = {
+                'prompt': request.prompt,
+                'negative_prompt': request.negative_prompt,
+                'model': request.model,
+                'guidance_scale': request.guidance_scale,
+                'response_format': request.response_format,
+                'seed': request.seed,
+                'size': request.size,
+                'steps': request.steps
+            }
             
-            return json_response
+            for field, value in field_mappings.items():
+                if value is not None:
+                    if field in ['response_format', 'size']:
+                        form_data[field] = ServiceHandler._get_enum_value(value)
+                    else:
+                        form_data[field] = str(value)
+            
+            response = await app.state.client.post(
+                f"http://{host}:{port}{endpoint}",
+                files=files,
+                data=form_data,
+                timeout=HTTP_TIMEOUT
+            )
+            return await ServiceHandler._handle_response(response)
             
         except httpx.TimeoutException as e:
             raise HTTPException(status_code=504, detail=str(e))
@@ -482,6 +566,8 @@ class RequestProcessor:
         "/embeddings": (EmbeddingRequest, ServiceHandler.generate_embeddings_response),
         "/v1/images/generations": (ImageGenerationRequest, ServiceHandler.generate_image_response),
         "/images/generations": (ImageGenerationRequest, ServiceHandler.generate_image_response),
+        "/v1/images/edits": (ImageEditRequest, ServiceHandler.generate_image_edit_response),
+        "/images/edits": (ImageEditRequest, ServiceHandler.generate_image_edit_response),
     }
     
     @staticmethod
@@ -721,6 +807,8 @@ class RequestProcessor:
                         elif endpoint == "/v1/embeddings" or endpoint == "/embeddings":
                             tasks = ["chat", "embed"]
                         elif endpoint == "/v1/images/generations" or endpoint == "/images/generations":
+                            tasks = ["image-generation"]
+                        elif endpoint == "/v1/images/edits" or endpoint == "/images/edits":
                             tasks = ["image-generation"]
                         else:
                             raise HTTPException(status_code=404, detail="Task not found")
